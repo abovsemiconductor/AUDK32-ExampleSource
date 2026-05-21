@@ -29,6 +29,11 @@
 
 #define TC_TEST_OPS         QSPI_OPS_INTR
 
+#define TC_QSPI_EXAMPLE_INTR
+#define TC_QSPI_EXAMPLE_DMA
+
+#define TC_QSPI_DESC_MAX_CNT 2
+
 extern uint32_t SystemCoreClock;
 static volatile uint32_t s_un32SysTimerVal=0;
 static volatile uint32_t g_msTick = 0;
@@ -53,10 +58,37 @@ void GetChipSetInfo(void)
     LOG("- Core: ARM %s  \n",pn8ChipCoreInfo);
     LOG("- Communicate via: %s%d - %dbps\n",CONFIG_DEBUG_MODULE_STR,DEBUG_UART_ID,APP_UART_BAUD);
     LOG("- ARM System Core Clock = %d\n",SystemCoreClock);
-    LOG("- QSPI FLASH Polling Example\n");
+    LOG("- QSPI FLASH Interrupt Example\n");
     LOG("************************************************\n\r");
 }
 #endif
+
+/**********************************************************************
+ * @brief		Swap Endian per 32-bit word
+ * @param[in]	buf : Buffer pointer to swap
+ * @param[in]	len : Buffer length in bytes (must be multiple of 4)
+ * @return	    true : Success, false : Invalid parameter
+ **********************************************************************/
+bool SwapEndian32PerWord(uint8_t *buf, uint32_t len)
+{
+    if ((buf == NULL) || ((len & 0x3U) != 0U))
+    {
+        return false;
+    }
+
+    for (uint32_t i = 0; i < len; i += 4U)
+    {
+        uint8_t t0 = buf[i + 0];
+        uint8_t t1 = buf[i + 1];
+
+        buf[i + 0] = buf[i + 3];
+        buf[i + 1] = buf[i + 2];
+        buf[i + 2] = t1;
+        buf[i + 3] = t0;
+    }
+
+    return true;
+}
 
 /**********************************************************************
  * @brief		ARM System Timer Interrupt Handler.
@@ -209,7 +241,7 @@ static HAL_ERR_e PRV_QSPI_Transfer(QSPI_ID_e eId, uint16_t un16Cmd, bool bAddr, 
     ret = HAL_QSPI_SetPhaseConfig(eId, &tDataCfg);
 
     /* Execute command */
-    ret = HAL_QSPI_Command(eId, un16Cmd, un32Addr, bAddr, 10000);
+    ret = HAL_QSPI_Command(eId, un16Cmd, 10000);
     if (ret != HAL_ERR_OK)
     {
         LOG("QSPI Execute Error: %d\n", ret);
@@ -237,6 +269,162 @@ static HAL_ERR_e PRV_QSPI_Transfer(QSPI_ID_e eId, uint16_t un16Cmd, bool bAddr, 
     return ret;
 }
 
+#if defined (TC_QSPI_EXAMPLE_DMA)
+static HAL_ERR_e PRV_QSPI_TransferDma(QSPI_ID_e eId, uint16_t un16Cmd, bool bAddr, uint32_t un32Addr, uint32_t un32DataSize, uint8_t *pun8Data, QSPI_DIR_MODE_e un8DirMode)
+{
+    HAL_ERR_e ret = HAL_ERR_OK;
+    QSPI_PHASE_CFG_t tCmdCfg =
+    {
+        .ePhaseType             = QSPI_PHASE_CMD,
+        .eOpMode                = QSPI_OP_MODE_INDIRECT,
+        .eSampleRate            = QSPI_SAMPLE_RATE_SINGLE,
+        .tPhaCfg.tCmd.eWidth    = QSPI_PHASE_WIDTH_8BIT,
+        .eBusMode               = QSPI_BUS_MODE_SINGLE,
+        .bSkip = false,
+    };
+    QSPI_PHASE_CFG_t tAddrCfg =
+    {
+        .ePhaseType             = QSPI_PHASE_ADDR,
+        .eOpMode                = QSPI_OP_MODE_INDIRECT,
+        .eSampleRate            = QSPI_SAMPLE_RATE_SINGLE,
+        .tPhaCfg.tAddr.eWidth   = QSPI_PHASE_WIDTH_24BIT,
+        .bSkip = true
+    };
+    QSPI_PHASE_CFG_t tMBitCfg =
+    {
+        .ePhaseType             = QSPI_PHASE_MBIT,
+        .eOpMode                = QSPI_OP_MODE_INDIRECT,
+        .eSampleRate            = QSPI_SAMPLE_RATE_SINGLE,
+        .tPhaCfg.tMBits.eWidth  = QSPI_PHASE_WIDTH_8BIT,
+        .bSkip = true
+    };
+    QSPI_PHASE_CFG_t tDmyCfg =
+    {
+        .ePhaseType = QSPI_PHASE_DUMMY,
+        .eOpMode = QSPI_OP_MODE_INDIRECT,
+        .bSkip = true
+    };
+    QSPI_PHASE_CFG_t tDataCfg =
+    {
+        .ePhaseType = QSPI_PHASE_DATA,
+        .eOpMode = QSPI_OP_MODE_INDIRECT,
+        .bSkip = true
+    };
+
+    if((un16Cmd == MX25_CMD_QPP) || (un16Cmd == MX25_CMD_QIOREAD))
+    {
+        tAddrCfg.eBusMode = QSPI_BUS_MODE_QUAD;
+        tDmyCfg.bSkip = false;
+        tDmyCfg.tPhaCfg.tDmy.un8Cycles = 6; // 6 dummy cycles
+        tDataCfg.eBusMode = QSPI_BUS_MODE_QUAD;
+    }
+    else if(un16Cmd == MX25_CMD_QREAD)
+    {
+        tAddrCfg.eBusMode = QSPI_BUS_MODE_SINGLE;
+        tDmyCfg.bSkip = false;
+        tDmyCfg.tPhaCfg.tDmy.un8Cycles = 8; // 8 dummy cycles
+        tDataCfg.eBusMode = QSPI_BUS_MODE_QUAD;
+    }
+    else if(un16Cmd == MX25_CMD_DIOREAD)
+    {
+        tAddrCfg.eBusMode = QSPI_BUS_MODE_DUAL;
+        tDataCfg.eBusMode = QSPI_BUS_MODE_DUAL;
+    }
+    else if(un16Cmd == MX25_CMD_DREAD)
+    {
+        tAddrCfg.eBusMode = QSPI_BUS_MODE_SINGLE;
+        tDataCfg.eBusMode = QSPI_BUS_MODE_DUAL;
+    }
+    else
+    {
+        tAddrCfg.eBusMode = QSPI_BUS_MODE_SINGLE;
+        tDataCfg.eBusMode = QSPI_BUS_MODE_SINGLE;
+    }
+
+    /* ---------------- Command Phase ---------------- */
+    ret = HAL_QSPI_SetPhaseConfig(eId, &tCmdCfg);
+
+    /* ---------------- Address Phase ---------------- */
+    tAddrCfg.bSkip                  = !bAddr;
+    tAddrCfg.tPhaCfg.tAddr.un32Addr = un32Addr;
+    ret = HAL_QSPI_SetPhaseConfig(eId, &tAddrCfg);
+
+    /* ---------------- Mode Bits Phase (skip) -------- */
+    ret = HAL_QSPI_SetPhaseConfig(eId, &tMBitCfg);
+
+    /* ---------------- Dummy Phase (skip) ------------ */
+    ret = HAL_QSPI_SetPhaseConfig(eId, &tDmyCfg);
+
+    /* ---------------- Data Phase -------------------- */
+    tDataCfg.bSkip = un32DataSize > 0 ? false : true;
+    tDataCfg.eSampleRate = QSPI_SAMPLE_RATE_SINGLE;
+    tDataCfg.tPhaCfg.tData.eDirMode = un8DirMode;
+    tDataCfg.tPhaCfg.tData.eFlipMode = QSPI_FLIP_DISABLE;
+    tDataCfg.tPhaCfg.tData.un32Size = un32DataSize;
+    ret = HAL_QSPI_SetPhaseConfig(eId, &tDataCfg);
+
+    QSPI_DMA_DESC_t tDmaDesc[TC_QSPI_DESC_MAX_CNT];
+    uint32_t un32DescCnt = TC_QSPI_DESC_MAX_CNT;
+    uint32_t un32DescBytes = un32DataSize / un32DescCnt;
+    uint16_t un16DescWords = 1;
+
+    if(un32DescBytes < 4)
+    {
+        un32DescCnt = 1;
+        un32DescBytes = un32DataSize;
+    }
+    un16DescWords = un32DescBytes / 4;
+
+    for (int i = 0; i < un32DescCnt; i++)
+    {
+        tDmaDesc[i] = (QSPI_DMA_DESC_t)
+        {
+            .tCtrl.b.bValid = true,
+            .tCtrl.b.bEnd = (i == (un32DescCnt - 1)),
+            .tCtrl.b.bIrqEn = (i == (un32DescCnt - 1)),
+            .tCtrl.b.eDescType = QSPI_DMA_DESC_TYPE_DATA,
+            .tCtrl.b.un16Size = un16DescWords,
+            .un32Addr = (uint32_t)(pun8Data + (un32DescBytes * i)),
+        };
+    }
+
+    QSPI_DMA_CFG_t tDmaCfg =
+    {
+        .un32DescAddr = (uint32_t)&tDmaDesc,
+        .eFixedBurstLen = QSPI_BURST_UNDERMINED
+    };
+
+    ret = HAL_QSPI_SetDmaConfig(eId, &tDmaCfg);
+
+    if (pun8Data != NULL)
+    {
+        /* Data Transfer */
+        if (un8DirMode == QSPI_DIR_INPUT)
+        {
+            ret = HAL_QSPI_Receive(eId, NULL, un32DataSize, false);
+        }
+        else
+        {
+            ret = HAL_QSPI_Transmit(eId, NULL, un32DataSize, false);
+        }
+    }
+    /* Execute command */
+    ret = HAL_QSPI_Command(eId, un16Cmd, 10000);
+    if (ret != HAL_ERR_OK)
+    {
+        LOG("QSPI Execute Error: %d\n", ret);
+        return ret;
+    }
+    /* Wait for Done */
+    ret = PRV_QSPI_WaitIrqDone(&s_tQspiIrqCtx, 1000);
+    if (ret != HAL_ERR_OK)
+    {
+        LOG("QSPI Wait IRQ Timeout/Error: %d evt=0x%08X\n", ret, s_tQspiIrqCtx.un32Events);
+        return ret;
+    }
+    return ret;
+}
+#endif
 static uint8_t PRV_QSPI_ReadStatus(QSPI_ID_e eId)
 {
     HAL_ERR_e ret = HAL_ERR_OK;
@@ -323,7 +511,7 @@ static void EX_QSPI_Program(QSPI_ID_e eId, uint16_t un16Command, uint32_t un32Ad
 {
     HAL_ERR_e ret = HAL_ERR_OK;
 
-    while ((PRV_QSPI_ReadStatus(eId) & MX25_SR_WIP) == MX25_SR_WIP);
+    while (PRV_QSPI_ReadStatus(eId) & MX25_SR_WIP);
 
     do
     {
@@ -352,7 +540,41 @@ static void EX_QSPI_Program(QSPI_ID_e eId, uint16_t un16Command, uint32_t un32Ad
 
     while (PRV_QSPI_ReadStatus(eId) & MX25_SR_WIP);
 }
+#if defined (TC_QSPI_EXAMPLE_DMA)
+static void EX_QSPI_ProgramDma(QSPI_ID_e eId, uint16_t un16Command, uint32_t un32Address, uint32_t un32Len, uint8_t *pun8Data)
+{
+    HAL_ERR_e ret = HAL_ERR_OK;
 
+    while (PRV_QSPI_ReadStatus(eId) & MX25_SR_WIP);
+
+    do
+    {
+        ret = PRV_QSPI_Transfer(QSPI_ID_0, MX25_CMD_WREN, false, 0, 0, NULL, QSPI_DIR_OUTPUT);
+        if (ret != HAL_ERR_OK)
+        {
+            LOG("QSPI MX25_CMD_WREN Error: %d\n", ret);
+            break;
+        }
+    }
+    while (!(PRV_QSPI_ReadStatus(eId) & MX25_SR_WEL));
+
+    ret = PRV_QSPI_TransferDma(QSPI_ID_0, un16Command, true, un32Address, un32Len, pun8Data, QSPI_DIR_OUTPUT);
+    if (ret != HAL_ERR_OK)
+    {
+        LOG("QSPI CMD[%02X] Error: %d\n", un16Command, ret);
+    }
+
+    while (PRV_QSPI_ReadStatus(eId) & MX25_SR_WIP);
+
+    ret = PRV_QSPI_Transfer(QSPI_ID_0, MX25_CMD_WRDI, false, 0, 0, NULL, QSPI_DIR_OUTPUT);
+    if (ret != HAL_ERR_OK)
+    {
+        LOG("QSPI MX25_CMD_WRDI Error: %d\n", ret);
+    }
+
+    while (PRV_QSPI_ReadStatus(eId) & MX25_SR_WIP);
+}
+#endif
 static void EX_QSPI_QuadEnable(QSPI_ID_e eId,bool bEnable)
 {
     uint8_t sr = 0;
@@ -467,34 +689,105 @@ int main(void)
     EX_QSPI_QuadEnable(QSPI_ID_0, false);
 
     uint8_t un8data[16] = {0,};
-    un8data[0] = 0x01;
-    un8data[1] = 0x00;
 
-    LOG(" << Single Sector Erase/Read Test >>\r\n");
-    EX_QSPI_Program(QSPI_ID_0, MX25_CMD_SE4K, 0, 0, NULL); // Erase 4K sector at address 0x000000
+#if defined(TC_QSPI_EXAMPLE_INTR)
+    LOG("\n --------- Start QSPI Interrupt example -------\n");
+    LOG(" << Single Sector Erase/Read >>\r\n");
+    EX_QSPI_Program(QSPI_ID_0, MX25_CMD_SE4K, 0, 0, NULL);
     PRV_QSPI_Transfer(QSPI_ID_0, MX25_CMD_READ, true, 0, 16, un8data, QSPI_DIR_INPUT);
     LOG_HEX(un8data, 16);
 
-    for (uint32_t i = 0; i < 16; i++)
+    LOG(" << Single Page Program >>\r\n");
+    for (int i = 0; i < 16; i++)
     {
-        un8data[i] = (uint8_t)i;
+        un8data[i] = i;
     }
-    //EX_QSPI_Program(QSPI_ID_0, MX25_CMD_PP, 0, 16, un8data); // Page program at address 0x000000
-
-    LOG(" << Quad Page Program Test >>\r\n");
-    EX_QSPI_QuadEnable(QSPI_ID_0, true);
-    EX_QSPI_Program(QSPI_ID_0, MX25_CMD_QPP, 0, 16, un8data); // Page program at address 0x000000
+    EX_QSPI_QuadEnable(QSPI_ID_0, false);
+    EX_QSPI_Program(QSPI_ID_0, MX25_CMD_PP, 0, 16, un8data);
     LOG_HEX(un8data, 16);
-    LOG(" << Quad Page Read Test >>\r\n");
+
+    LOG(" << Single Page Read >>\r\n");
+    memset(un8data, 0, 16);
+    PRV_QSPI_Transfer(QSPI_ID_0, MX25_CMD_READ, true, 0, 16, un8data, QSPI_DIR_INPUT);
+    LOG_HEX(un8data, 16);
+
+    LOG(" << Single Sector Erase/Read >>\r\n");
+    EX_QSPI_Program(QSPI_ID_0, MX25_CMD_SE4K, 0, 0, NULL);
+    PRV_QSPI_Transfer(QSPI_ID_0, MX25_CMD_READ, true, 0, 16, un8data, QSPI_DIR_INPUT);
+    LOG_HEX(un8data, 16);
+
+    LOG(" << Quad Page Program >>\r\n");
+    for (int i = 0; i < 16; i++)
+    {
+        un8data[i] = (i << 4) | i;
+    }
+    EX_QSPI_QuadEnable(QSPI_ID_0, true);
+    EX_QSPI_Program(QSPI_ID_0, MX25_CMD_QPP, 0, 16, un8data);
+    LOG_HEX(un8data, 16);
+
+    LOG(" << Quad Page Read >>\r\n");
     memset(un8data, 0, 16);
     PRV_QSPI_Transfer(QSPI_ID_0, MX25_CMD_QREAD, true, 0, 16, un8data, QSPI_DIR_INPUT);
     LOG_HEX(un8data, 16);
 
-    LOG(" << Single Page Read Test >>\r\n");
+    LOG(" << Single Page Read >>\r\n");
     memset(un8data, 0, 16);
     EX_QSPI_QuadEnable(QSPI_ID_0, false);
     PRV_QSPI_Transfer(QSPI_ID_0, MX25_CMD_READ, true, 0, 16, un8data, QSPI_DIR_INPUT);
     LOG_HEX(un8data, 16);
+#endif
+
+#if defined(TC_QSPI_EXAMPLE_DMA)
+    LOG("\n ------ Start QSPI DMA Interrupt example ------\n");
+    LOG(" << Single Sector Erase/Read >>\r\n");
+    EX_QSPI_Program(QSPI_ID_0, MX25_CMD_SE4K, 0, 0, NULL);
+    PRV_QSPI_TransferDma(QSPI_ID_0, MX25_CMD_READ, true, 0, 16, un8data, QSPI_DIR_INPUT);
+    LOG_HEX(un8data, 16);
+
+    LOG(" << Single Page Program >>\r\n");
+    for (uint32_t i = 0; i < 16; i++)
+    {
+        un8data[i] = (uint8_t)i;
+    }
+    LOG_HEX(un8data, 16);
+    EX_QSPI_QuadEnable(QSPI_ID_0, false);
+    SwapEndian32PerWord(un8data, 16);
+    EX_QSPI_ProgramDma(QSPI_ID_0, MX25_CMD_PP, 0, 16, un8data);
+
+    LOG(" << Single Page Read >>\r\n");
+    memset(un8data, 0, 16);
+    PRV_QSPI_TransferDma(QSPI_ID_0, MX25_CMD_READ, true, 0, 16, un8data, QSPI_DIR_INPUT);
+    SwapEndian32PerWord(un8data, 16);
+    LOG_HEX(un8data, 16);
+
+    LOG(" << Single Sector Erase/Read >>\r\n");
+    EX_QSPI_Program(QSPI_ID_0, MX25_CMD_SE4K, 0, 0, NULL);
+    PRV_QSPI_TransferDma(QSPI_ID_0, MX25_CMD_READ, true, 0, 16, un8data, QSPI_DIR_INPUT);
+    LOG_HEX(un8data, 16);
+
+    LOG(" << Quad Page Program >>\r\n");
+    for (int i = 0; i < 16; i++)
+    {
+        un8data[i] = (i << 4) | i;
+    }
+    LOG_HEX(un8data, 16);
+    EX_QSPI_QuadEnable(QSPI_ID_0, true);
+    SwapEndian32PerWord(un8data, 16);
+    EX_QSPI_ProgramDma(QSPI_ID_0, MX25_CMD_QPP, 0, 16, un8data);
+
+    LOG(" << Quad Page Read >>\r\n");
+    memset(un8data, 0, 16);
+    PRV_QSPI_TransferDma(QSPI_ID_0, MX25_CMD_QREAD, true, 0, 16, un8data, QSPI_DIR_INPUT);
+    SwapEndian32PerWord(un8data, 16);
+    LOG_HEX(un8data, 16);
+
+    LOG(" << Single Page Read >>\r\n");
+    memset(un8data, 0, 16);
+    EX_QSPI_QuadEnable(QSPI_ID_0, false);
+    PRV_QSPI_TransferDma(QSPI_ID_0, MX25_CMD_READ, true, 0, 16, un8data, QSPI_DIR_INPUT);
+    SwapEndian32PerWord(un8data, 16);
+    LOG_HEX(un8data, 16);
+#endif
 
     /* main loop */
     while(1)

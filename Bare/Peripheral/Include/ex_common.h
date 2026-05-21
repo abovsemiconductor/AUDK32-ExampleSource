@@ -90,7 +90,11 @@ typedef enum {
 void EX_COMMON_SetShowModuleInfo(char *pcName, int n32Cnt);
 int EX_COMMON_GetShowOpt(char *pcOpt);
 void EX_COMMON_SetShowModuleLog(char *pcName, char *pcStr, EX_COMM_STR_OPT_e eOpt);
+#if defined (EX_COMMON_UNSUPPORT_OPTION_MSG)
+#define EX_COMMON_SetShowOptVal(nSpace, bIf, eOpt, eVal, pcStr)     (void)0
+#else
 void EX_COMMON_SetShowOptVal(int nSpace, bool bIf, EX_COMM_STR_OPT_e eOpt, EX_COMM_STR_VAL_e eVal, char *pcStr);
+#endif
 void EX_COMMON_SetShowCmd(EX_COMM_STR_CMD_e eCmd, char *pcCmd, int n32Cnt, EX_COMM_STR_OPT_e *eOpt, int n32OptCnt, char *pcExtStr);
 
 enum debug_cmd_status EX_COMMON_GetEnable(char *chr, bool *pbEnable);

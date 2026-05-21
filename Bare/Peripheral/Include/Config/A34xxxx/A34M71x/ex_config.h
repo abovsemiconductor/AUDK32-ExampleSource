@@ -2,7 +2,7 @@
  *******************************************************************************
  * @file        ex_config.h
  * @author      ABOV R&D Division
- * @brief       Example Config A31C12x
+ * @brief       Example Config A34M41x
  *
  * Copyright 2024 ABOV Semiconductor Co.,Ltd. All rights reserved.
  *
@@ -21,10 +21,12 @@ extern "C"
 {
 #endif
 
-#if defined(EXTRN_SUBFAMILY_A31C12x)
+#if defined(EXTRN_SUBFAMILY_A34M71x)
 
+/* EX_ADC */
 #define EX_ADC_TRG_TYPE_INDEPENDENT
-#define EX_SCU_UNSUPPORT_MCLK_SRC_LSI
+#define EX_ADC_SAMPLING_TIME_INDEPENDENT
+#define EX_ADC_TRGINFO_TYPE_SEQUENCE_NUMBER
 
 #endif
 

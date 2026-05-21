@@ -16,6 +16,7 @@
 #include "abov_example_config.h"
 
 #include "abov_config.h"
+#include "ex_configs.h"
 #include "ex_common.h"
 #include "debug_cmd.h"
 #include "debug_log.h"
@@ -484,7 +485,9 @@ static enum debug_cmd_status EX_SCU_CLK_SetMClk(int32_t n32Argc, char *pn8Argv[]
     {
         goto err;
     }
-    
+
+#if defined(EX_SCU_UNSUPPORT_MCLK_SRC_LSI)
+#else
     if(tMClkCfg.eMClk != SCUCLK_SRC_LSI)
     {
         tPreMClkCfg.eMClk = SCUCLK_SRC_LSI;
@@ -497,6 +500,7 @@ static enum debug_cmd_status EX_SCU_CLK_SetMClk(int32_t n32Argc, char *pn8Argv[]
             goto err;
         }
     }
+#endif
 
     eErr = HAL_SCU_CLK_SetMClk(&tMClkCfg);
     if(eErr != HAL_ERR_OK)

@@ -52,6 +52,8 @@ extern "C"
 #include "Config/A31xxxx/A31G33x/ex_config.h"
 #elif defined(EXTRN_SUBFAMILY_A31G34x)
 #include "Config/A31xxxx/A31G34x/ex_config.h"
+#elif defined(EXTRN_SUBFAMILY_A31T41x)
+#include "Config/A31xxxx/A31T41x/ex_config.h"
 
 /* A33xxxx */
 #elif defined(EXTRN_SUBFAMILY_A33G52x)
@@ -70,6 +72,8 @@ extern "C"
 #include "Config/A34xxxx/A34L71x/ex_config.h"
 #elif defined(EXTRN_SUBFAMILY_A34G43x)
 #include "Config/A34xxxx/A34G43x/ex_config.h"
+#elif defined(EXTRN_SUBFAMILY_A34M71x)
+#include "Config/A34xxxx/A34M71x/ex_config.h"
 
 #else
 #error "There is no ex_config.h for Subfamily."

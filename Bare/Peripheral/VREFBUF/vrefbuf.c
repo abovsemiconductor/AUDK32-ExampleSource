@@ -17,8 +17,8 @@
 
 #if defined(VREFBUF_TC)
 #include "abov_config.h"
-#include "ex_common.h"
 #include "ex_configs.h"
+#include "ex_common.h"
 #include "debug_cmd.h"
 #include "debug_log.h"
 #include "debug.h"

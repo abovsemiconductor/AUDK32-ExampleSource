@@ -14,6 +14,7 @@
  ******************************************************************************/
 
 #include <string.h>
+#include "ex_configs.h"
 #include "ex_common.h"
 #include "debug.h"
 #include "debug_cmd.h"
@@ -145,6 +146,8 @@ void EX_COMMON_SetShowModuleLog(char *pcName, char *pcStr, EX_COMM_STR_OPT_e eOp
     }
 }
 
+#if defined (EX_COMMON_UNSUPPORT_OPTION_MSG)
+#else
 void EX_COMMON_SetShowOptVal(int nSpace, bool bIf, EX_COMM_STR_OPT_e eOpt, EX_COMM_STR_VAL_e eVal, char *pcStr)
 {
     char acStr[EX_COMM_BUF_SIZE];
@@ -178,6 +181,7 @@ void EX_COMMON_SetShowOptVal(int nSpace, bool bIf, EX_COMM_STR_OPT_e eOpt, EX_CO
 
     LOG("%s\n", acStr);
 }
+#endif
 
 void EX_COMMON_SetShowCmd(EX_COMM_STR_CMD_e eCmd, char *pcCmd, int n32Cnt, EX_COMM_STR_OPT_e *eOpt, int n32OptCnt, char *pcExtStr)
 {
@@ -217,11 +221,14 @@ int EX_COMMON_GetShowOpt(char *pcOpt)
 {
     int ret = 0;
     EX_COMM_STR_e eStr = EX_COMM_STR_USAGE;
+#if defined (EX_COMMON_UNSUPPORT_OPTION_MSG)
+#else
     if((strncmp(pcOpt, "opt", 3) == 0))
     {
         eStr = EX_COMM_STR_EMPTY_USAGE;
         ret = 1;
     }
+#endif
     LOG("%s", pcCommStr[eStr]);
     return ret;
 }
