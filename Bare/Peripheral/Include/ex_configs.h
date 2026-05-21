@@ -68,6 +68,8 @@ extern "C"
 #include "Config/A34xxxx/A34M42x/ex_config.h"
 #elif defined(EXTRN_SUBFAMILY_A34L71x)
 #include "Config/A34xxxx/A34L71x/ex_config.h"
+#elif defined(EXTRN_SUBFAMILY_A34G43x)
+#include "Config/A34xxxx/A34G43x/ex_config.h"
 
 #else
 #error "There is no ex_config.h for Subfamily."

@@ -735,7 +735,7 @@ static void EX_ADC_IRQHandler(uint32_t un32Event, void *pContext)
                    && (bSkip == false))
              
                 {
-                    for(int i = 0; (i < s_un8SeqCnt) && (s_un32RCnt < EX_ADC_RBUF_SIZE) ; i++)
+                    for(int i = 0; i < s_un8SeqCnt; i++)
                     {
                         eErr = HAL_ADC_GetData(eId, i, &s_tResult[s_un32RCnt++]);
                         if(eErr != HAL_ERR_OK)
