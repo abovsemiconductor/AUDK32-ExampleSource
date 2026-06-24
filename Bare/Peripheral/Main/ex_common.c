@@ -233,6 +233,90 @@ int EX_COMMON_GetShowOpt(char *pcOpt)
     return ret;
 }
 
+#if defined (EX_COMMON_ENABLE_CUSTOM_SSCANF)
+int EX_COMMON_ParseByFormat(const char *pcStr, char cFmt, unsigned int *pun32Data)
+{
+    uint32_t un32Val = 0;
+    char cStr;
+    int base = 16;
+    int found = 0;
+
+    if (pcStr == NULL || pun32Data == NULL)
+    {
+        return -1;
+    }
+
+    if(cFmt == 'd')
+    {
+        base = 10;
+    }
+    else if((cFmt == 'x') || (cFmt == 'X'))
+    {
+        base = 16;
+    }
+    else
+    {
+        return -1;
+    }
+
+    // skip space
+    while (*pcStr == ' ' || *pcStr == '\t')
+    {
+        pcStr++;
+    }
+
+    // skip 0x for hex
+    if (base == 16 && (pcStr[0] == '0') && ((pcStr[1] == 'x') || (pcStr[1] == 'X')))
+    {
+        pcStr += 2;
+    }
+
+    if (*pcStr == '\0')
+    {
+        return -1;
+    }
+
+    while ((cStr = *pcStr++) != '\0')
+    {
+        uint32_t un32Digit = 0;
+
+        if ((cStr >= '0') && (cStr <= '9'))
+        {
+            un32Digit = cStr - '0';
+        }
+        else if ((cStr >= 'a') && (cStr <= 'f'))
+        {
+            un32Digit = cStr - 'a' + 10;
+        }
+        else if ((cStr >= 'A') && (cStr <= 'F'))
+        {
+            un32Digit = cStr - 'A' + 10;
+        }
+        else
+        {
+            return -1;
+        }
+
+        // overflow check
+        if (un32Val > (UINT32_MAX - un32Digit) / base)
+        {
+            return -1;
+        }
+
+        un32Val = un32Val * base + un32Digit;
+        found = 1;
+    }
+
+    if (!found)
+    {
+        return -1;
+    }
+
+    *pun32Data = un32Val;
+    return 0;
+}
+#endif
+
 enum debug_cmd_status EX_COMMON_GetEnable(char *chr, bool *pbEnable)
 {
     enum debug_cmd_status eDbgStatus = DEBUG_CMD_SUCCESS;

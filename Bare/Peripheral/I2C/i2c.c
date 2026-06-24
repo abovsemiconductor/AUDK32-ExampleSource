@@ -31,6 +31,10 @@
 #error "This chipset did not support this example."
 #endif
 
+#if defined (EX_COMMON_ENABLE_CUSTOM_SSCANF)
+#define sscanf(str, fmt, out) EX_COMMON_ParseByFormat((str), (fmt)[1], (uint32_t *)(out))
+#endif
+
 #define EX_I2C_STR "I2C"
 #define EX_I2C_LOG_STR "I2C :"
 #define EX_I2C_ERR_STR "[E]I2C :"
@@ -516,6 +520,15 @@ void EX_I2C(void)
 {
     /* Add TC commands */
     debug_cmd_init(s_tEX_I2C_CMD,DEBUG_CMD_LIST_COUNT(s_tEX_I2C_CMD));
+
+#if defined (EXAMPLE_FIXED_PERI_MAPPING)
+    /* Initialize I2C SCL port */
+    HAL_PCU_SetPullUpDown((PCU_ID_e)I2C0_SCL_PORT,(PCU_PIN_ID_e)I2C0_SCL_PORT_ID,PCU_PUPD_UP);
+    HAL_PCU_SetAltMode((PCU_ID_e)I2C0_SCL_PORT,(PCU_PIN_ID_e)I2C0_SCL_PORT_ID,(PCU_ALT_e)I2C0_SCL_MUX_ID);
+    /* Initialize I2C SDA port */
+    HAL_PCU_SetPullUpDown((PCU_ID_e)I2C0_SDA_PORT,(PCU_PIN_ID_e)I2C0_SDA_PORT_ID,PCU_PUPD_UP);
+    HAL_PCU_SetAltMode((PCU_ID_e)I2C0_SDA_PORT,(PCU_PIN_ID_e)I2C0_SDA_PORT_ID,(PCU_ALT_e)I2C0_SDA_MUX_ID);
+#endif
 }
 
 #endif

@@ -33,6 +33,10 @@
 
 #warning The debug channel of this example should be use to USART1.
 
+#if defined (EX_COMMON_ENABLE_CUSTOM_SSCANF)
+#define sscanf(str, fmt, out) EX_COMMON_ParseByFormat((str), (fmt)[1], (uint32_t *)(out))
+#endif
+
 #define EX_EBI_STR "EBI"
 #define EX_EBI_LOG_STR "EBI :"
 #define EX_EBI_ERR_STR "[E]EBI :"

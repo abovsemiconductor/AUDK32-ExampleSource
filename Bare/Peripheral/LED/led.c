@@ -36,6 +36,10 @@
 #define EX_LED_UART1_LOG "WARN : The debug channel of LED example should be use to UART1."
 #endif
 
+#if defined (EX_COMMON_ENABLE_CUSTOM_SSCANF)
+#define sscanf(str, fmt, out) EX_COMMON_ParseByFormat((str), (fmt)[1], (uint32_t *)(out))
+#endif
+
 extern uint32_t SystemCoreClock;
 static LED_OPS_e s_eOps = LED_OPS_POLL;
 static bool s_bISRLog = false;

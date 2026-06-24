@@ -471,6 +471,10 @@ static enum debug_cmd_status EX_TIMER1_SetClk(int32_t n32Argc, char *pn8Argv[])
         .eClk = TIMER1_CLK_PCLK_DIV_16,
         .uSubClk.eMccr = TIMER1_CLK_MCCR_NONE,
         .un8MccrDiv = 0,
+#elif (TIMER1_CLKSRC_USE_HSI == 1)
+        .eClk  = TIMER1_CLK_MCCR,
+        .uSubClk.eMccr = TIMER1_CLK_MCCR_HSI,
+        .un8MccrDiv = DEFAULT_HSI_1MHZ_DIV,
 #else
         .eClk  = TIMER1_CLK_MCCR,
         .uSubClk.eMccr = TIMER1_CLK_MCCR_HSE,
@@ -701,7 +705,22 @@ void EX_TIMER1(void)
 {
     /* Add EX commands */
     debug_cmd_init(s_tEX_TIMER1_CMD,DEBUG_CMD_LIST_COUNT(s_tEX_TIMER1_CMD));
+
+#if defined (EXAMPLE_FIXED_PERI_MAPPING)
+    /* Initialize Timer10 port */
+    HAL_PCU_SetAltMode((PCU_ID_e)TIMER10_CAP0_PORT,(PCU_PIN_ID_e)TIMER10_CAP0_PORT_ID,(PCU_ALT_e)TIMER10_CAP0_MUX_ID);
+    /* Initialize Timer11 port */
+    HAL_PCU_SetAltMode((PCU_ID_e)TIMER11_OUT0_PORT,(PCU_PIN_ID_e)TIMER11_OUT0_PORT_ID,(PCU_ALT_e)TIMER11_OUT0_MUX_ID);
+    /* Initialize Timer12 port */
+    HAL_PCU_SetAltMode((PCU_ID_e)TIMER12_OUT0_PORT,(PCU_PIN_ID_e)TIMER12_OUT0_PORT_ID,(PCU_ALT_e)TIMER12_OUT0_MUX_ID);
+    /* Initialize Timer13 port */
+    HAL_PCU_SetAltMode((PCU_ID_e)TIMER13_OUT0_PORT,(PCU_PIN_ID_e)TIMER13_OUT0_PORT_ID,(PCU_ALT_e)TIMER13_OUT0_MUX_ID);
+
+    /* Initialize CLKO Port*/
+    HAL_PCU_SetAltMode((PCU_ID_e)CLKO_PORT,(PCU_PIN_ID_e)CLKO_PORT_ID,(PCU_ALT_e)CLKO_MUX_ID);
+    HAL_SCU_CLK_SetOutput(SCUCLK_SRC_HSI, 15, true);
+#endif
 }
 
-#endif
+#endif /* TIMER1_TC */
 /* --------------------------------- End Of File ------------------------------ */

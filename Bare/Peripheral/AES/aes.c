@@ -30,6 +30,10 @@
 #error "This chipset did not support this example."
 #endif
 
+#if defined (EX_COMMON_ENABLE_CUSTOM_SSCANF)
+#define sscanf(str, fmt, out) EX_COMMON_ParseByFormat((str), (fmt)[1], (uint32_t *)(out))
+#endif
+
 #define EX_AES_STR "AES"
 #define EX_AES_LOG_STR "AES :"
 #define EX_AES_ERR_STR "[E]AES :"

@@ -31,6 +31,10 @@
 #error "This chipset did not support this example."
 #endif
 
+#if defined (EX_COMMON_ENABLE_CUSTOM_SSCANF)
+#define sscanf(str, fmt, out) EX_COMMON_ParseByFormat((str), (fmt)[1], (uint32_t *)(out))
+#endif
+
 #define EX_DAC_STR "DAC"
 #define EX_DAC_LOG_STR "DAC :"
 #define EX_DAC_ERR_STR "[E]DAC :"

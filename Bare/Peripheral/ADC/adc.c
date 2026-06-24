@@ -34,6 +34,16 @@
 #error "This chipset did not support this example."
 #endif
 
+#if defined (EX_COMMON_ENABLE_CUSTOM_SSCANF)
+#define sscanf(str, fmt, out) EX_COMMON_ParseByFormat((str), (fmt)[1], (uint32_t *)(out))
+#endif
+
+#if defined (EX_ADC_LOG_OFF)
+#define ADC_LOG(...)
+#else
+#define ADC_LOG     LOG
+#endif
+
 #define EX_ADC_STR "ADC"
 #define EX_ADC_LOG_STR "ADC :"
 #define EX_ADC_ERR_STR "[E]ADC :"
@@ -95,6 +105,8 @@ static void PRV_EX_ADC_Print(uint32_t un32Cnt)
 {
     LOG("%s [%s][%d\t:%d]\t[Ch=%d]\t[TrgInfo=%x]", EX_ADC_LOG_STR, s_tResult[un32Cnt].bReadDDR == true ? "DDR" : "DRx",
          un32Cnt, s_tResult[un32Cnt].un16Result, s_tResult[un32Cnt].un8ChInfo, s_tResult[un32Cnt].un8TrgInfo);
+#if defined (EX_ADC_PRINT_RESULT_ONLY)
+#else
     if(s_eMode == ADC_MODE_MULTIPLE)
     {
         LOG("\t[TrgSrc=%d]\t[TrgSrcSubNum=%d]\n", s_tTCAdcTrgInfo[un32Cnt].eTrgSrc, s_tTCAdcTrgInfo[un32Cnt].un8TrgNum);
@@ -103,10 +115,14 @@ static void PRV_EX_ADC_Print(uint32_t un32Cnt)
     {
         LOG("\n");
     }
+#endif
 }
 
 static enum debug_cmd_status EX_ADC_Help(int32_t n32Argc, char *pn8Argv[])
 {
+#if defined (EX_ADC_DISABLE_HELP_CMD)
+    return DEBUG_CMD_SUCCESS;
+#else
     uint32_t un32ShowOpt = 0;
     EX_COMM_STR_OPT_e eOpt[2];
 
@@ -216,6 +232,7 @@ static enum debug_cmd_status EX_ADC_Help(int32_t n32Argc, char *pn8Argv[])
     LOG("\n");
 
     return DEBUG_CMD_SUCCESS;
+#endif
 }
 
 static enum debug_cmd_status EX_ADC_GetId(int32_t n32Argc, char *pn8Argv[], ADC_ID_e *peId)
@@ -230,7 +247,7 @@ static enum debug_cmd_status EX_ADC_GetId(int32_t n32Argc, char *pn8Argv[], ADC_
     un8Data = atoi(pn8Argv[1]); 
     if(un8Data >= CONFIG_ADC_MAX_COUNT)
     {
-        LOG("%s Max Chan %d\n", EX_ADC_ERR_STR, CONFIG_ADC_MAX_COUNT);
+        ADC_LOG("%s Max Chan %d\n", EX_ADC_ERR_STR, CONFIG_ADC_MAX_COUNT);
         return DEBUG_CMD_INVALID;
     }
 
@@ -650,7 +667,7 @@ static void EX_ADC_IRQHandler(uint32_t un32Event, void *pContext)
     else
     {
         HAL_ADC_Stop(eId);
-        LOG("%s intr stop\n", EX_ADC_LOG_STR);
+        ADC_LOG("%s intr stop\n", EX_ADC_LOG_STR);
     }
 }
 #elif defined (EX_ADC_TRG_TYPE_SHARE)
@@ -697,7 +714,7 @@ static void EX_ADC_IRQHandler(uint32_t un32Event, void *pContext)
     if(s_un32RCnt >= EX_ADC_RBUF_SIZE)
     {
         HAL_ADC_Stop(eId);
-        LOG("%s intr stop\n", EX_ADC_LOG_STR);
+        ADC_LOG("%s intr stop\n", EX_ADC_LOG_STR);
     }
     else
     {
@@ -870,7 +887,7 @@ static void EX_ADC_IRQHandler(uint32_t un32Event, void *pContext)
     else
     {
         HAL_ADC_Stop(eId);
-        LOG("%s intr stop\n", EX_ADC_LOG_STR);
+        ADC_LOG("%s intr stop\n", EX_ADC_LOG_STR);
     }
 }
 #else
@@ -945,7 +962,7 @@ static enum debug_cmd_status EX_ADC_Init(int32_t n32Argc, char *pn8Argv[])
     s_bEnableCmp = false;
 #endif
 
-    LOG("%s (%d) %s\n", EX_ADC_LOG_STR, (uint32_t)eId, pcCmdStr[EX_COMM_STR_CMD_INIT]);
+    ADC_LOG("%s (%d) %s\n", EX_ADC_LOG_STR, (uint32_t)eId, pcCmdStr[EX_COMM_STR_CMD_INIT]);
 
     return DEBUG_CMD_SUCCESS;
 }
@@ -968,7 +985,7 @@ static enum debug_cmd_status EX_ADC_Uninit(int32_t n32Argc, char *pn8Argv[])
         return DEBUG_CMD_INVALID;
     }
 
-    LOG("%s (%d) %s\n", EX_ADC_LOG_STR, (uint32_t)eId, pcCmdStr[EX_COMM_STR_CMD_UNINIT]);
+    ADC_LOG("%s (%d) %s\n", EX_ADC_LOG_STR, (uint32_t)eId, pcCmdStr[EX_COMM_STR_CMD_UNINIT]);
 
     return DEBUG_CMD_SUCCESS;
 }
@@ -1016,7 +1033,7 @@ static enum debug_cmd_status EX_ADC_SetConfig(int32_t n32Argc, char *pn8Argv[])
     enum debug_cmd_status eDbgStatus;
     ADC_ID_e eId = ADC_ID_0;
     ADC_CFG_t tCfg;
-     
+    
     eDbgStatus = EX_ADC_GetId(n32Argc, pn8Argv, &eId);
     if(eDbgStatus != DEBUG_CMD_SUCCESS)
     {
@@ -1217,7 +1234,7 @@ static enum debug_cmd_status EX_ADC_Start(int32_t n32Argc, char *pn8Argv[])
 
     s_un32RCnt = 0;
 
-    LOG("%s (%d) %s\n", EX_ADC_LOG_STR, eId, pcCmdStr[EX_COMM_STR_CMD_START]);
+    ADC_LOG("%s (%d) %s\n", EX_ADC_LOG_STR, eId, pcCmdStr[EX_COMM_STR_CMD_START]);
 
     if(s_eOps == ADC_OPS_POLL)
     {
@@ -1244,7 +1261,7 @@ static enum debug_cmd_status EX_ADC_Start(int32_t n32Argc, char *pn8Argv[])
                 eErr = HAL_ADC_GetData(eId, 0, &s_tResult[0]);
                 if(eErr != HAL_ERR_OK)
                 {
-                    LOG("%s GetData\n", EX_ADC_ERR_STR);
+                    ADC_LOG("%s GetData\n", EX_ADC_ERR_STR);
                 }
                 else
                 {
@@ -1253,7 +1270,7 @@ static enum debug_cmd_status EX_ADC_Start(int32_t n32Argc, char *pn8Argv[])
             }
             else
             {
-                LOG("%s timeout\n", EX_ADC_LOG_STR);
+                ADC_LOG("%s timeout\n", EX_ADC_LOG_STR);
             }
 
             eErr = HAL_ADC_Stop(eId);
@@ -1276,7 +1293,7 @@ static enum debug_cmd_status EX_ADC_Start(int32_t n32Argc, char *pn8Argv[])
                 {
                     goto err;
                 }
-                LOG("%s change chan port to 1\n", EX_ADC_LOG_STR);
+                ADC_LOG("%s change chan port to 1\n", EX_ADC_LOG_STR);
             }
 
             if(i == 600)
@@ -1292,7 +1309,7 @@ static enum debug_cmd_status EX_ADC_Start(int32_t n32Argc, char *pn8Argv[])
                 {
                     goto err;
                 }
-                LOG("%s change chan port to 2\n", EX_ADC_LOG_STR);
+                ADC_LOG("%s change chan port to 2\n", EX_ADC_LOG_STR);
             }
 
             SystemDelayMS(EX_ADC_DELAY);
@@ -1345,7 +1362,7 @@ static enum debug_cmd_status EX_ADC_Stop(int32_t n32Argc, char *pn8Argv[])
         return DEBUG_CMD_INVALID;
     }
 
-    LOG("%s (%d) %s\n", EX_ADC_LOG_STR, eId, pcCmdStr[EX_COMM_STR_CMD_STOP]);
+    ADC_LOG("%s (%d) %s\n", EX_ADC_LOG_STR, eId, pcCmdStr[EX_COMM_STR_CMD_STOP]);
 
     return DEBUG_CMD_SUCCESS;
 }
@@ -1361,7 +1378,7 @@ static enum debug_cmd_status EX_ADC_SetLog(int32_t n32Argc, char *pn8Argv[])
         un32ISRLog = 0;
     }
 
-    LOG("%s ISR Log %s\n", EX_ADC_LOG_STR, (un32ISRLog == 1 ? "on":"off"));
+    ADC_LOG("%s ISR Log %s\n", EX_ADC_LOG_STR, (un32ISRLog == 1 ? "on":"off"));
 
     return DEBUG_CMD_SUCCESS;
 }

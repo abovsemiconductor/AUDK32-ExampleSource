@@ -31,6 +31,10 @@
 #error "This chipset did not support this example."
 #endif
 
+#if defined (EX_COMMON_ENABLE_CUSTOM_SSCANF)
+#define sscanf(str, fmt, out) EX_COMMON_ParseByFormat((str), (fmt)[1], (uint32_t *)(out))
+#endif
+
 #define EX_UART_STR "UART"
 #define EX_UART_LOG_STR "UART :"
 #define EX_UART_ERR_STR "[E]UART :"
@@ -555,6 +559,15 @@ void EX_UART(void)
 {
     /* Add TC commands */
     debug_cmd_init(s_tEX_UART_CMD,DEBUG_CMD_LIST_COUNT(s_tEX_UART_CMD));
+
+#if defined (EXAMPLE_FIXED_PERI_MAPPING)
+    /* Initialize UART0 TX port */
+    HAL_PCU_SetPullUpDown((PCU_ID_e)UART0_TX_PORT,(PCU_PIN_ID_e)UART0_TX_PORT_ID,UART0_TX_MUX_ID);
+    HAL_PCU_SetAltMode((PCU_ID_e)UART0_TX_PORT,(PCU_PIN_ID_e)UART0_TX_PORT_ID,(PCU_ALT_e)UART0_TX_MUX_ID);
+    /* Initialize UART0 RX port */
+    HAL_PCU_SetPullUpDown((PCU_ID_e)UART0_RX_PORT,(PCU_PIN_ID_e)UART0_RX_PORT_ID,UART0_RX_MUX_ID);
+    HAL_PCU_SetAltMode((PCU_ID_e)UART0_RX_PORT,(PCU_PIN_ID_e)UART0_RX_PORT_ID,(PCU_ALT_e)UART0_RX_MUX_ID);
+#endif
 }
 
 #endif

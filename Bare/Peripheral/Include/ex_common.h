@@ -96,7 +96,9 @@ void EX_COMMON_SetShowModuleLog(char *pcName, char *pcStr, EX_COMM_STR_OPT_e eOp
 void EX_COMMON_SetShowOptVal(int nSpace, bool bIf, EX_COMM_STR_OPT_e eOpt, EX_COMM_STR_VAL_e eVal, char *pcStr);
 #endif
 void EX_COMMON_SetShowCmd(EX_COMM_STR_CMD_e eCmd, char *pcCmd, int n32Cnt, EX_COMM_STR_OPT_e *eOpt, int n32OptCnt, char *pcExtStr);
-
+#if defined (EX_COMMON_ENABLE_CUSTOM_SSCANF)
+int EX_COMMON_ParseByFormat(const char *pcStr, char cFmt, unsigned int *pun32Data);
+#endif
 enum debug_cmd_status EX_COMMON_GetEnable(char *chr, bool *pbEnable);
 enum debug_cmd_status EX_COMMON_GetLevel(char *chr, bool *pbLevel);
 

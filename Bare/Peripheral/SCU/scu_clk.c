@@ -848,6 +848,11 @@ void EX_SCU_CLK(void)
 {
     /* Add TC commands */
     debug_cmd_init(s_tEX_SCU_CLK_CMD, DEBUG_CMD_LIST_COUNT(s_tEX_SCU_CLK_CMD));
+
+#if defined (EXAMPLE_FIXED_PERI_MAPPING)
+    /* Initialize CLKO Port*/
+    HAL_PCU_SetAltMode((PCU_ID_e)CLKO_PORT,(PCU_PIN_ID_e)CLKO_PORT_ID,(PCU_ALT_e)CLKO_MUX_ID);
+#endif
 }
 
 /* --------------------------------- End Of File ------------------------------ */

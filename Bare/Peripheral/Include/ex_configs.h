@@ -54,6 +54,8 @@ extern "C"
 #include "Config/A31xxxx/A31G34x/ex_config.h"
 #elif defined(EXTRN_SUBFAMILY_A31T41x)
 #include "Config/A31xxxx/A31T41x/ex_config.h"
+#elif defined(EXTRN_SUBFAMILY_A31C11x)
+#include "Config/A31xxxx/A31C11x/ex_config.h"
 
 /* A33xxxx */
 #elif defined(EXTRN_SUBFAMILY_A33G52x)

@@ -263,6 +263,10 @@ static void EX_SetModule(void)
     EX_VREFBUF();
 #endif
 
+#if defined(HSICMU_TC)
+    EX_HSICMU();
+#endif
+
 }
 
 static void EX_Loop(void)

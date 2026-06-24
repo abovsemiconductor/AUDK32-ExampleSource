@@ -31,6 +31,10 @@
 #error "This chipset did not support this example."
 #endif
 
+#if defined (EX_COMMON_ENABLE_CUSTOM_SSCANF)
+#define sscanf(str, fmt, out) EX_COMMON_ParseByFormat((str), (fmt)[1], (uint32_t *)(out))
+#endif
+
 #define EX_QEI_STR              "QEI"
 #define EX_QEI_LOG_STR          "QEI :"
 #define EX_QEI_ERR_STR          "[E]QEI :"

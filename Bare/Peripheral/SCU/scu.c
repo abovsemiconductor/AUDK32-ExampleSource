@@ -23,6 +23,10 @@
 #include "debug.h"
 #include "hal_scu.h"
 
+#if defined (EX_COMMON_ENABLE_CUSTOM_SSCANF)
+#define sscanf(str, fmt, out) EX_COMMON_ParseByFormat((str), (fmt)[1], (uint32_t *)(out))
+#endif
+
 #define EX_SCU_STR "SCU"
 #define EX_SCU_LOG_STR "SCU :"
 #define EX_SCU_ERR_STR "[E]SCU :"

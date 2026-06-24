@@ -26,6 +26,10 @@
 #include "hal_scu_pwr.h"
 #include "hal_scu_clk.h"
 
+#if defined (EX_COMMON_ENABLE_CUSTOM_SSCANF)
+#define sscanf(str, fmt, out) EX_COMMON_ParseByFormat((str), (fmt)[1], (uint32_t *)(out))
+#endif
+
 #define EX_SCU_PWR_STR "SCUPWR"
 #define EX_SCU_PWR_LOG_STR "SCUPWR :"
 #define EX_SCU_PWR_ERR_STR "[E]SCUPWR :"
