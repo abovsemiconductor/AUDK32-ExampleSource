@@ -37,7 +37,7 @@
 #define ADC_SEQ_CNT             8
 #define ADC_RBUF_SIZE           8
 
-static ADC_Context_t s_tADCContext[CONFIG_ADC_MAX_COUNT];
+static ADC_Context_t s_tADCContext;
 static ADC_SEQ_DATA_t s_tSeqData[ADC_RBUF_SIZE];
 static uint32_t s_un32RCnt = 0;
 
@@ -58,7 +58,7 @@ static void PRV_ADC_IRQHandler(uint32_t un32Event, void *pContext)
         }
     }
 
-    if(s_un32RCnt < ADC_RBUF_SIZE - 1)
+    if(s_un32RCnt < ADC_RBUF_SIZE)
     {
         HAL_ADC_Start(ptContext->eId);
     }
@@ -119,7 +119,8 @@ void ADC_INIT_Burst(void)
         return;
     }
 
-    eErr = HAL_ADC_SetIRQ(ADC_ID_0, ADC_OPS_INTR, PRV_ADC_IRQHandler, &s_tADCContext[ADC_ID_0], 3);
+    s_tADCContext.eId = ADC_ID_0;
+    eErr = HAL_ADC_SetIRQ(ADC_ID_0, ADC_OPS_INTR, PRV_ADC_IRQHandler, &s_tADCContext, 3);
     if (eErr != HAL_ERR_OK)
     {
         LOG("HAL_ADC_SetIRQ() error, (%d)\n", eErr);
@@ -129,7 +130,7 @@ void ADC_INIT_Burst(void)
     for (int i = 0 ; i < ADC_SEQ_CNT ; i++)
     {
         tAdcSeqTrgCfg.utCfg.tInd.un8SeqNum = i;
-        tAdcSeqTrgCfg.utCfg.tInd.un8ChNum = 7 * (i / 4 + 1) + i % 4;
+        tAdcSeqTrgCfg.utCfg.tInd.un8ChNum = i == 0 ? ADC0_IN_CHANNEL_NUM : i;
 
         eErr = HAL_ADC_SetSeqConfig(ADC_ID_0, &tAdcSeqTrgCfg);
         if (eErr != HAL_ERR_OK)

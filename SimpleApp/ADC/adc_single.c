@@ -38,7 +38,7 @@
 #define ADC_SEQ_CNT             8
 #define ADC_RBUF_SIZE           8
 
-static ADC_Context_t s_tADCContext[CONFIG_ADC_MAX_COUNT];
+static ADC_Context_t s_tADCContext;
 static ADC_SEQ_DATA_t s_tResult[ADC_RBUF_SIZE];
 static uint32_t s_un32RCnt = 0;
 
@@ -56,7 +56,7 @@ static void PRV_ADC_IRQHandler(uint32_t un32Event, void *pContext)
         }
     }
 
-    if(s_un32RCnt < ADC_RBUF_SIZE - 1)
+    if(s_un32RCnt < ADC_RBUF_SIZE)
     {
         HAL_ADC_Start(ptContext->eId);
     }
@@ -193,7 +193,8 @@ void ADC_INIT_Single(void)
         return;
     }
 
-    eErr = HAL_ADC_SetIRQ(ADC_ID_0, ADC_OPS_INTR, PRV_ADC_IRQHandler, &s_tADCContext[ADC_ID_0], 3);
+    s_tADCContext.eId = ADC_ID_0;
+    eErr = HAL_ADC_SetIRQ(ADC_ID_0, ADC_OPS_INTR, PRV_ADC_IRQHandler, &s_tADCContext, 3);
     if (eErr != HAL_ERR_OK)
     {
         LOG("HAL_ADC_SetIRQ() error, (%d)\n", eErr);

@@ -29,7 +29,7 @@
 #include "hal_pcu.h"
 #include "hal_i2c.h"
 
-#include "debug_cmd.h"
+#include "debug_serial.h"
 #include "debug_log.h"
 #include "debug.h"
 
@@ -49,6 +49,7 @@ static void I2C_IRQHandler(uint32_t un32Event, void *pContext)
 
 void I2C_Tx(void)
 {
+    char ch;
     HAL_ERR_e eErr = HAL_ERR_OK;
 
     I2C_CFG_t tCfg =
@@ -59,7 +60,7 @@ void I2C_Tx(void)
         .un8OwnSlvAddr = I2C0_SLAVE_ADDR,
         .bSaGcEnable = false
     };
-
+    
     eErr = HAL_PCU_SetAltMode((PCU_ID_e)I2C0_SCL_PORT, (PCU_PIN_ID_e)I2C0_SCL_PORT_ID, (PCU_ALT_e)I2C0_SCL_MUX_ID);
     if (eErr != HAL_ERR_OK)
     {
@@ -112,6 +113,12 @@ void I2C_Tx(void)
         return;
     }
 
+    LOG("Press 't' to start transmission when the receiver is ready.\n");
+
+    do {
+      ch = serial_getc(NULL);
+    } while(ch != 't');
+
     eErr = HAL_I2C_Transmit(I2C_ID_0, I2C0_SLAVE_ADDR, s_un8TxData, sizeof(s_un8TxData), false);
     if (eErr != HAL_ERR_OK)
     {
@@ -119,8 +126,6 @@ void I2C_Tx(void)
         return;
     }
 
-    LOG("Tx Data : 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n", s_un8TxData[0], s_un8TxData[1], s_un8TxData[2], s_un8TxData[3],
-        s_un8TxData[4], s_un8TxData[5], s_un8TxData[6], s_un8TxData[7]);
     LOG("Wait Tx...\n");
 }
 #endif

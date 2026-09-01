@@ -30,11 +30,35 @@
 #include "hal_pcu.h"
 #include "hal_usart.h"
 
-#include "debug_cmd.h"
+#include "debug_serial.h"
 #include "debug_log.h"
 #include "debug.h"
 
 #if (CONFIG_APP_USART == 1)
+
+#if defined(USART1_TX_PORT) || defined(USART1_RX_PORT)
+#define USART_ID                USART_ID_1
+#define USART_SCK_PORT          USART1_SCK_PORT
+#define USART_SCK_PORT_ID       USART1_SCK_PORT_ID
+#define USART_SCK_MUX_ID        USART1_SCK_MUX_ID
+#define USART_TX_PORT           USART1_TX_PORT
+#define USART_TX_PORT_ID        USART1_TX_PORT_ID
+#define USART_TX_MUX_ID         USART1_TX_MUX_ID
+#define USART_RX_PORT           USART1_RX_PORT
+#define USART_RX_PORT_ID        USART1_RX_PORT_ID
+#define USART_RX_MUX_ID         USART1_RX_MUX_ID
+#else
+#define USART_ID                USART_ID_0
+#define USART_SCK_PORT          USART0_SCK_PORT
+#define USART_SCK_PORT_ID       USART0_SCK_PORT_ID
+#define USART_SCK_MUX_ID        USART0_SCK_MUX_ID
+#define USART_TX_PORT           USART0_TX_PORT
+#define USART_TX_PORT_ID        USART0_TX_PORT_ID
+#define USART_TX_MUX_ID         USART0_TX_MUX_ID
+#define USART_RX_PORT           USART0_RX_PORT
+#define USART_RX_PORT_ID        USART0_RX_PORT_ID
+#define USART_RX_MUX_ID         USART0_RX_MUX_ID
+#endif
 
 static uint8_t s_un8TxData[8] = {0xa5, 0x5a, 0xa5, 0x5a, 0x05, 0x07, 0x09, 0xa0};
 
@@ -48,6 +72,9 @@ static void USART_IRQHandler(uint32_t un32Event, void *pContext)
 
 void USART_USRT_Tx(bool bTxMode)
 {
+    LOG("Transmit USART with usrt mode.\n");
+
+    char ch;
     HAL_ERR_e eErr = HAL_ERR_OK;
 
     USART_CFG_t tCfg =
@@ -61,46 +88,52 @@ void USART_USRT_Tx(bool bTxMode)
         .tCfg.tUsrt.eClkPol = USART_CLKPOL_TXD_RISE_RXD_FALL
     };
 
-    eErr = HAL_PCU_SetAltMode((PCU_ID_e)USART0_SCK_PORT, (PCU_PIN_ID_e)USART0_SCK_PORT_ID, (PCU_ALT_e)USART0_SCK_MUX_ID);
+    eErr = HAL_PCU_SetAltMode((PCU_ID_e)USART_SCK_PORT, (PCU_PIN_ID_e)USART_SCK_PORT_ID, (PCU_ALT_e)USART_SCK_MUX_ID);
     if (eErr != HAL_ERR_OK)
     {
         return;
     }
 
-    eErr = HAL_PCU_SetAltMode((PCU_ID_e)USART0_RX_PORT, (PCU_PIN_ID_e)USART0_RX_PORT_ID, (PCU_ALT_e)USART0_RX_MUX_ID);
+    eErr = HAL_PCU_SetAltMode((PCU_ID_e)USART_RX_PORT, (PCU_PIN_ID_e)USART_RX_PORT_ID, (PCU_ALT_e)USART_RX_MUX_ID);
     if (eErr != HAL_ERR_OK)
     {
         return;
     }
 
-    eErr = HAL_PCU_SetAltMode((PCU_ID_e)USART0_TX_PORT, (PCU_PIN_ID_e)USART0_TX_PORT_ID, (PCU_ALT_e)USART0_TX_MUX_ID);
+    eErr = HAL_PCU_SetAltMode((PCU_ID_e)USART_TX_PORT, (PCU_PIN_ID_e)USART_TX_PORT_ID, (PCU_ALT_e)USART_TX_MUX_ID);
     if (eErr != HAL_ERR_OK)
     {
         return;
     }
 
     /* Initialize instance */
-    eErr = HAL_USART_Init(USART_ID_0);
+    eErr = HAL_USART_Init(USART_ID);
     if (eErr != HAL_ERR_OK)
     {
         return;
     }
 
     /* Set up operation parameters */
-    eErr = HAL_USART_SetConfig(USART_ID_0, &tCfg);
+    eErr = HAL_USART_SetConfig(USART_ID, &tCfg);
     if (eErr != HAL_ERR_OK)
     {
         return;
     }
+
+    LOG("Press 't' to transmit data to the receiver.\n");
+
+    do {
+      ch = serial_getc(NULL);
+    } while(ch != 't');
 
     /* Set IRQ priority and enable interrupt */
-    eErr = HAL_USART_SetIRQ(USART_ID_0, USART_OPS_INTR, USART_IRQHandler, NULL, 3);
+    eErr = HAL_USART_SetIRQ(USART_ID, USART_OPS_INTR, USART_IRQHandler, NULL, 3);
     if (eErr != HAL_ERR_OK)
     {
         return;
     }
 
-    eErr = HAL_USART_Transmit(USART_ID_0, s_un8TxData, sizeof(s_un8TxData), false);
+    eErr = HAL_USART_Transmit(USART_ID, s_un8TxData, sizeof(s_un8TxData), false);
     if (eErr != HAL_ERR_OK)
     {
         return;

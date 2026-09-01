@@ -29,7 +29,7 @@
 #include "hal_pcu.h"
 #include "hal_i2c.h"
 
-#include "debug_cmd.h"
+#include "debug_serial.h"
 #include "debug_log.h"
 #include "debug.h"
 
@@ -54,6 +54,7 @@ static void I2C_IRQHandler(uint32_t un32Event, void *pContext)
 
 void I2C_Rx(void)
 {
+    char ch;
     HAL_ERR_e eErr = HAL_ERR_OK;
 
     I2C_CFG_t tCfg =
@@ -115,6 +116,12 @@ void I2C_Rx(void)
         LOG("HAL_I2C_SetIRQ() error, (%d)\n", eErr);
         return;
     }
+
+    LOG("Ready to receive. Press 'r' to start.\n");
+
+    do {
+      ch = serial_getc(NULL);
+    } while(ch != 'r');
 
     eErr = HAL_I2C_Receive(I2C_ID_0, I2C0_SLAVE_ADDR, s_un8RxData, sizeof(s_un8RxData), false);
     if (eErr != HAL_ERR_OK)

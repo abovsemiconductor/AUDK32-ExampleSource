@@ -42,11 +42,41 @@
 #include "hal_pcu.h"
 #include "hal_usart.h"
 
-#include "debug_cmd.h"
+#include "debug_serial.h"
 #include "debug_log.h"
 #include "debug.h"
 
 #if (CONFIG_APP_USART == 1)
+
+#if defined(USART1_MOSI_PORT) || defined(USART1_MISO_PORT)
+#define USART_ID                USART_ID_1
+#define USART_SS_PORT           USART1_SS_PORT
+#define USART_SS_PORT_ID        USART1_SS_PORT_ID
+#define USART_SS_MUX_ID         USART1_SS_MUX_ID
+#define USART_SCK_PORT          USART1_SCK_PORT
+#define USART_SCK_PORT_ID       USART1_SCK_PORT_ID
+#define USART_SCK_MUX_ID        USART1_SCK_MUX_ID
+#define USART_MOSI_PORT         USART1_MOSI_PORT
+#define USART_MOSI_PORT_ID      USART1_MOSI_PORT_ID
+#define USART_MOSI_MUX_ID       USART1_MOSI_MUX_ID
+#define USART_MISO_PORT         USART1_MISO_PORT
+#define USART_MISO_PORT_ID      USART1_MISO_PORT_ID
+#define USART_MISO_MUX_ID       USART1_MISO_MUX_ID
+#else
+#define USART_ID                USART_ID_0
+#define USART_SS_PORT           USART0_SS_PORT
+#define USART_SS_PORT_ID        USART0_SS_PORT_ID
+#define USART_SS_MUX_ID         USART0_SS_MUX_ID
+#define USART_SCK_PORT          USART0_SCK_PORT
+#define USART_SCK_PORT_ID       USART0_SCK_PORT_ID
+#define USART_SCK_MUX_ID        USART0_SCK_MUX_ID
+#define USART_MOSI_PORT         USART0_MOSI_PORT
+#define USART_MOSI_PORT_ID      USART0_MOSI_PORT_ID
+#define USART_MOSI_MUX_ID       USART0_MOSI_MUX_ID
+#define USART_MISO_PORT         USART0_MISO_PORT
+#define USART_MISO_PORT_ID      USART0_MISO_PORT_ID
+#define USART_MISO_MUX_ID       USART0_MISO_MUX_ID
+#endif
 
 static uint8_t s_un8RxData[8];
 
@@ -65,6 +95,9 @@ static void USART_IRQHandler(uint32_t un32Event, void *pContext)
 
 void USART_SPI_Rx(void)
 {
+    LOG("Receive USART with spi mode.\n");
+
+    char ch;
     HAL_ERR_e eErr = HAL_ERR_OK;
 
     USART_CFG_t tCfg =
@@ -80,52 +113,58 @@ void USART_SPI_Rx(void)
         .tCfg.tSpi.bSlvRecvDisable = false
     };
 
-    eErr = HAL_PCU_SetAltMode((PCU_ID_e)USART0_SS_PORT, (PCU_PIN_ID_e)USART0_SS_PORT_ID, (PCU_ALT_e)USART0_SS_MUX_ID);
+    eErr = HAL_PCU_SetAltMode((PCU_ID_e)USART_SS_PORT, (PCU_PIN_ID_e)USART_SS_PORT_ID, (PCU_ALT_e)USART_SS_MUX_ID);
     if (eErr != HAL_ERR_OK)
     {
         return;
     }
 
-    eErr = HAL_PCU_SetAltMode((PCU_ID_e)USART0_SCK_PORT, (PCU_PIN_ID_e)USART0_SCK_PORT_ID, (PCU_ALT_e)USART0_SCK_MUX_ID);
+    eErr = HAL_PCU_SetAltMode((PCU_ID_e)USART_SCK_PORT, (PCU_PIN_ID_e)USART_SCK_PORT_ID, (PCU_ALT_e)USART_SCK_MUX_ID);
     if (eErr != HAL_ERR_OK)
     {
         return;
     }
 
-    eErr = HAL_PCU_SetAltMode((PCU_ID_e)USART0_MOSI_PORT, (PCU_PIN_ID_e)USART0_MOSI_PORT_ID, (PCU_ALT_e)USART0_MOSI_MUX_ID);
+    eErr = HAL_PCU_SetAltMode((PCU_ID_e)USART_MOSI_PORT, (PCU_PIN_ID_e)USART_MOSI_PORT_ID, (PCU_ALT_e)USART_MOSI_MUX_ID);
     if (eErr != HAL_ERR_OK)
     {
         return;
     }
 
-    eErr = HAL_PCU_SetAltMode((PCU_ID_e)USART0_MISO_PORT, (PCU_PIN_ID_e)USART0_MISO_PORT_ID, (PCU_ALT_e)USART0_MISO_MUX_ID);
+    eErr = HAL_PCU_SetAltMode((PCU_ID_e)USART_MISO_PORT, (PCU_PIN_ID_e)USART_MISO_PORT_ID, (PCU_ALT_e)USART_MISO_MUX_ID);
     if (eErr != HAL_ERR_OK)
     {
         return;
     }
 
     /* Initialize instance */
-    eErr = HAL_USART_Init(USART_ID_0);
+    eErr = HAL_USART_Init(USART_ID);
     if (eErr != HAL_ERR_OK)
     {
         return;
     }
 
     /* Set up operation parameters */
-    eErr = HAL_USART_SetConfig(USART_ID_0, &tCfg);
+    eErr = HAL_USART_SetConfig(USART_ID, &tCfg);
     if (eErr != HAL_ERR_OK)
     {
         return;
     }
 
     /* Set IRQ priority and enable interrupt */
-    eErr = HAL_USART_SetIRQ(USART_ID_0, USART_OPS_INTR, USART_IRQHandler, NULL, 3);
+    eErr = HAL_USART_SetIRQ(USART_ID, USART_OPS_INTR, USART_IRQHandler, NULL, 3);
     if (eErr != HAL_ERR_OK)
     {
         return;
     }
 
-    eErr = HAL_USART_Receive(USART_ID_0, s_un8RxData, sizeof(s_un8RxData), false);
+    LOG("Press 'r' to receive data from the transmitter.\n");
+
+    do {
+      ch = serial_getc(NULL);
+    } while(ch != 'r');
+
+    eErr = HAL_USART_Receive(USART_ID, s_un8RxData, sizeof(s_un8RxData), false);
     if (eErr != HAL_ERR_OK)
     {
         return;

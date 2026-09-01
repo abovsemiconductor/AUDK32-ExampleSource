@@ -28,10 +28,12 @@ extern void PCU_App(void);
 extern void FMC_App(void);
 extern void CRC_App(void);
 extern void TIMER1_App(void);
+extern void FRT_App(void);
 extern void I2C_App(void);
 extern void UART_App(void);
 extern void USART_App(void);
 extern void ADC_App(void);
+extern void CMP_App(void);
 extern void WDT_App(void);
 extern void SCU_App(void);
 
@@ -57,7 +59,9 @@ int main(void)
     PRV_PORT_Init();
 
     (void)HAL_SCU_CLK_SetSrcEnable(SCUCLK_SRC_LSI, true);
+#if defined(HSE_CLOCK)
     (void)HAL_SCU_CLK_SetSrcEnable(SCUCLK_SRC_HSE, true);
+#endif
     (void)HAL_SCU_CLK_SetSrcEnable(SCUCLK_SRC_HSI, true);
     (void)HAL_SCU_CLK_SetMClk(&tMClkCfg);
 
@@ -90,6 +94,9 @@ int main(void)
 #if (CONFIG_APP_TIMER1 == 1)
     TIMER1_App();
 #endif
+#if (CONFIG_APP_FRT == 1)
+    FRT_App();
+#endif
 #if (CONFIG_APP_I2C == 1)
     I2C_App();
 #endif
@@ -101,6 +108,9 @@ int main(void)
 #endif
 #if (CONFIG_APP_ADC == 1)
     ADC_App();
+#endif
+#if (CONFIG_APP_CMP == 1)
+    CMP_App();
 #endif
 #if (CONFIG_APP_WDT == 1)
     WDT_App();

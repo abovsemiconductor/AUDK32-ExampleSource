@@ -37,70 +37,53 @@
 #define ADC_SEQ_CNT             8
 #define ADC_RBUF_SIZE           8
 
-static ADC_Context_t s_tADCContext[CONFIG_ADC_MAX_COUNT];
+typedef struct
+{
+    bool bValid;
+    bool bReadData;
+    uint8_t un8ChNum;
+} EX_ADC_GROUP_t;
+
+static ADC_Context_t s_tADCContext;
 static ADC_SEQ_DATA_t s_tSeqData[ADC_RBUF_SIZE];
 static uint32_t s_un32RCnt = 0;
 
-typedef struct
-{
-    ADC_TRG_SRC_e    eTrgSrc;
-    uint8_t          un8TrgNum;
-    uint8_t          un8TrgMap;
-    uint8_t          un8LastSeqNum;
-    bool             bValid;
-} EX_ADC_GROUP_t;
-
-typedef struct
-{
-    ADC_TRG_SRC_e    eTrgSrc;
-    uint8_t          un8TrgNum;
-} EX_ADC_TRG_INFO_t;
-
 static EX_ADC_GROUP_t s_tTCAdcGroup[ADC_SEQ_CNT];
-static EX_ADC_TRG_INFO_t s_tTCAdcTrgInfo[ADC_RBUF_SIZE];
 
 static void PRV_ADC_IRQHandler(uint32_t un32Event, void *pContext)
 {
     HAL_ERR_e eErr = HAL_ERR_OK;
     ADC_Context_t *ptContext = (ADC_Context_t *)pContext;
-    uint8_t un8TrgInfo = 0, un8TrgInfoMsked = 0;
 
     if (un32Event & ADC_EVENT_SINGLE_CAPTURED)
     {
-        for (int i = 0; i < ADC_SEQ_CNT; i++)
+        for(int i = 0 ; i < ADC_SEQ_CNT ; i++)
         {
-            un8TrgInfoMsked = (un8TrgInfo & s_tTCAdcGroup[i].un8TrgMap);
-            if ((s_tTCAdcGroup[i].bValid == true) && (s_un32RCnt < ADC_RBUF_SIZE - 1)
-                && (un8TrgInfoMsked == (1UL << s_tTCAdcGroup[i].un8LastSeqNum))
-            )
+            if(s_tTCAdcGroup[i].bReadData)
             {
-                for (int j = 0; j < ADC_SEQ_CNT; j++)
+                continue;
+            }
+
+            s_tSeqData[i].bReadDDR = false;
+            eErr = HAL_ADC_GetData(ptContext->eId, i, &s_tSeqData[i]);
+            if (eErr != HAL_ERR_OK)
+            {
+                HAL_ADC_Stop(ptContext->eId);
+            }
+            else
+            {
+                if(s_tTCAdcGroup[i].bValid && (s_tTCAdcGroup[i].un8ChNum == s_tSeqData[i].un8ChInfo))
                 {
-                    if ((s_tTCAdcGroup[i].un8TrgMap >> j) & 0x1UL)
-                    {
-                        s_tSeqData[s_un32RCnt].bReadDDR = false;
-                        eErr = HAL_ADC_GetData(ptContext->eId, j, &s_tSeqData[s_un32RCnt]);
-                        if (eErr != HAL_ERR_OK)
-                        {
-                            s_un32RCnt = 0;
-                            HAL_ADC_Stop(ptContext->eId);
-                            break;
-                        }
-                        if (s_tSeqData[s_un32RCnt].un8TrgInfo != 0)
-                        {
-                            s_tTCAdcTrgInfo[s_un32RCnt].eTrgSrc = s_tTCAdcGroup[i].eTrgSrc;
-                            s_tTCAdcTrgInfo[s_un32RCnt].un8TrgNum = s_tTCAdcGroup[i].un8TrgNum;
-                            s_un32RCnt++;
-                        }
-                    }
+                    s_tTCAdcGroup[i].bReadData = true;
+                    s_un32RCnt++;
                 }
             }
         }
     }
 
-    if(s_un32RCnt < ADC_RBUF_SIZE - 1)
+    if (s_un32RCnt < ADC_RBUF_SIZE)
     {
-        //HAL_ADC_Start(ptContext->eId);
+        ;
     }
     else
     {
@@ -159,7 +142,8 @@ void ADC_INIT_Multiple(void)
         return;
     }
 
-    eErr = HAL_ADC_SetIRQ(ADC_ID_0, ADC_OPS_INTR, PRV_ADC_IRQHandler, &s_tADCContext[ADC_ID_0], 3);
+    s_tADCContext.eId = ADC_ID_0;
+    eErr = HAL_ADC_SetIRQ(ADC_ID_0, ADC_OPS_INTR, PRV_ADC_IRQHandler, &s_tADCContext, 3);
     if (eErr != HAL_ERR_OK)
     {
         LOG("HAL_ADC_SetIRQ() error, (%d)\n", eErr);
@@ -169,7 +153,7 @@ void ADC_INIT_Multiple(void)
     for (int i = 0 ; i < ADC_SEQ_CNT ; i++)
     {
         tAdcSeqTrgCfg.utCfg.tInd.un8SeqNum = i;
-        tAdcSeqTrgCfg.utCfg.tInd.un8ChNum = 7 * (i / 4 + 1) + i % 4;
+        tAdcSeqTrgCfg.utCfg.tInd.un8ChNum = i == 0 ? ADC0_IN_CHANNEL_NUM : i;
 
         eErr = HAL_ADC_SetSeqConfig(ADC_ID_0, &tAdcSeqTrgCfg);
         if (eErr != HAL_ERR_OK)
@@ -177,6 +161,9 @@ void ADC_INIT_Multiple(void)
             LOG("HAL_ADC_SetSeqConfig() error, (%d)\n", eErr);
             return;
         }
+
+        s_tTCAdcGroup[i].bValid = true;
+        s_tTCAdcGroup[i].un8ChNum = tAdcSeqTrgCfg.utCfg.tInd.un8ChNum;
     }
 
     eErr = HAL_ADC_Start(ADC_ID_0);
@@ -197,10 +184,9 @@ void ADC_INIT_Multiple(void)
 
     for(int i = 0 ; i < ADC_RBUF_SIZE ; i++)
     {
-        LOG("[%s][%2d:%4d]\t[Ch=%d]\t[TrgInfo=%x]",
+        LOG("[%s][%2d:%4d]\t[Ch=%d]\t[TrgInfo=%x]\n",
             s_tSeqData[i].bReadDDR == true ? "DDR" : "DRx",
             i, s_tSeqData[i].un16Result, s_tSeqData[i].un8ChInfo, s_tSeqData[i].un8TrgInfo);
-        LOG("\t[TrgSrc=%d]\t[TrgSrcSubNum=%d]\n", s_tTCAdcTrgInfo[i].eTrgSrc, s_tTCAdcTrgInfo[i].un8TrgNum);
     }
 }
 #endif
